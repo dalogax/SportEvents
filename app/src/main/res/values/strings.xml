@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">SportEvents</string>
+    <string name="title_section0">All</string>
+    <string name="title_section1">Running</string>
+    <string name="title_section2">Trail</string>
+    <string name="title_section3">BTT</string>
+    <string name="title_section4">Swim</string>
+    <string name="title_section5">Triathlon</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="action_example">Example action</string>
+    <string name="action_settings">Settings</string>
+    <string name="search_title">search</string>
+
+</resources>
