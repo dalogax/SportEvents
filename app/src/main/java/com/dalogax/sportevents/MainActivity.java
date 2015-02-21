@@ -5,21 +5,14 @@ import android.app.Activity;
 import android.app.ActionBar;
 import android.app.Fragment;
 import android.app.FragmentManager;
-import android.content.Context;
-import android.os.Build;
+import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.widget.CardView;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.support.v4.widget.DrawerLayout;
-import android.widget.ArrayAdapter;
-import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,8 +30,9 @@ public class MainActivity extends Activity
      * Used to store the last screen title. For use in {@link #restoreActionBar()}.
      */
     private CharSequence mTitle;
-    private CardView cardview;
 
+    public static String eventId = "EVENT_ID";
+    public static List<EventInfo> mockList = createMockList(30);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +43,6 @@ public class MainActivity extends Activity
                 getFragmentManager().findFragmentById(R.id.navigation_drawer);
         mTitle = getTitle();
 
-        // Set up the drawer.
         mNavigationDrawerFragment.setUp(
                 R.id.navigation_drawer,
                 (DrawerLayout) findViewById(R.id.drawer_layout));
@@ -60,16 +53,29 @@ public class MainActivity extends Activity
         llm.setOrientation(LinearLayoutManager.VERTICAL);
         recList.setLayoutManager(llm);
 
-        EventAdapter ca = new EventAdapter(createMockList(30));
+        recList.addOnItemTouchListener(
+                new RecyclerItemClickListener(getApplicationContext(), new RecyclerItemClickListener.OnItemClickListener() {
+                    @Override public void onItemClick(View view, int position) {
+                        Intent intent = new Intent(getBaseContext(), EventActivity.class);
+                        long message = mockList.get(position).id;
+                        intent.putExtra(eventId, message);
+                        startActivity(intent);
+                    }
+                })
+        );
+
+        EventAdapter ca = new EventAdapter(mockList);
         recList.setAdapter(ca);
     }
 
-    private List<EventInfo> createMockList(int size) {
+    private static List<EventInfo> createMockList(int size) {
 
         List<EventInfo> result = new ArrayList<EventInfo>();
         for (int i=1; i <= size; i++) {
             EventInfo ci = new EventInfo();
-            ci.infoText = "SampleEvent"+i;
+            ci.id = i;
+            ci.title = "SampleEvent"+i;
+            ci.description = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. ";
             result.add(ci);
         }
         return result;
@@ -162,13 +168,6 @@ public class MainActivity extends Activity
         }
 
         public PlaceholderFragment() {
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-            return rootView;
         }
 
         @Override

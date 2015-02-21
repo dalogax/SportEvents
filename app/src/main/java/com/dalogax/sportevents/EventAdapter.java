@@ -5,6 +5,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.List;
@@ -26,7 +27,8 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
     @Override
     public void onBindViewHolder(EventViewHolder eventViewHolder, int i) {
         EventInfo ci = eventList.get(i);
-        eventViewHolder.infoText.setText(ci.infoText);
+        eventViewHolder.title.setText(ci.title);
+        eventViewHolder.title.setBackgroundResource(R.drawable.race1);
     }
 
     @Override
@@ -40,12 +42,11 @@ public class EventAdapter extends RecyclerView.Adapter<EventAdapter.EventViewHol
 
     public static class EventViewHolder extends RecyclerView.ViewHolder {
 
-        protected TextView infoText;
+        protected TextView title;
 
         public EventViewHolder(View v) {
             super(v);
-            infoText =  (TextView) v.findViewById(R.id.info_text);
-
+            title =  (TextView) v.findViewById(R.id.title);
         }
     }
 }

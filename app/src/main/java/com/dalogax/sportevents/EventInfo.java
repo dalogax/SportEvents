@@ -2,5 +2,7 @@ package com.dalogax.sportevents;
 
 public class EventInfo {
 
-    protected String infoText;
+    protected long id;
+    protected String title;
+    protected String description;
 }
