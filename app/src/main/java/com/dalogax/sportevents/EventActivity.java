@@ -9,19 +9,16 @@ import android.view.MenuItem;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-
 public class EventActivity extends Activity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Intent intent = getIntent();
-        long id = intent.getLongExtra(MainActivity.eventId, 0);
-
+        EventInfo event = (EventInfo) intent.getExtras().getSerializable(MainActivity.event);
         setContentView(R.layout.activity_event);
         getActionBar().setDisplayHomeAsUpEnabled(true);
-        if (id>0){
-            EventInfo event = MainActivity.mockList.get((int) id);
+        if (event!=null){
             ActionBar actionBar = getActionBar();
             actionBar.setTitle(event.title);
             ImageView image = (ImageView) findViewById(R.id.e_image);

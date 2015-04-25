@@ -15,6 +15,7 @@ import android.view.View;
 import android.support.v4.widget.DrawerLayout;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -31,14 +32,30 @@ public class MainActivity extends Activity
      */
     private CharSequence mTitle;
 
-    public static String eventId = "EVENT_ID";
-    public static List<EventInfo> mockList = createMockList(30);
+    public EventDataSource eventDataSource;
+
+    public static String event = "EVENT";
+
+    public List<EventInfo> listed = new ArrayList<EventInfo>();
+
+    public List<String> categories;
+
+    public int selectedCateogry = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if (categories==null){
+            loadCategories();
+        }
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_main);
 
+        eventDataSource = new EventDataSource(this);
+        eventDataSource.open();
+        if (eventDataSource.getAllEvents().size()==0) {
+            createMockList(12);
+        }
         mNavigationDrawerFragment = (NavigationDrawerFragment)
                 getFragmentManager().findFragmentById(R.id.navigation_drawer);
         mTitle = getTitle();
@@ -57,28 +74,47 @@ public class MainActivity extends Activity
                 new RecyclerItemClickListener(getApplicationContext(), new RecyclerItemClickListener.OnItemClickListener() {
                     @Override public void onItemClick(View view, int position) {
                         Intent intent = new Intent(getBaseContext(), EventActivity.class);
-                        long message = mockList.get(position).id;
-                        intent.putExtra(eventId, message);
+                        intent.putExtra(event, eventDataSource.getEvent(listed.get(position).getId()));
                         startActivity(intent);
                     }
                 })
         );
-
-        EventAdapter ca = new EventAdapter(mockList);
+        listed = eventDataSource.getAllEvents();
+        EventAdapter ca = new EventAdapter(listed);
         recList.setAdapter(ca);
     }
 
-    private static List<EventInfo> createMockList(int size) {
+    private void loadSelectedCategory(){
+        RecyclerView recList = (RecyclerView) findViewById(R.id.cardList);
+        if (selectedCateogry>0) {
+            listed = eventDataSource.getEventsByCategory(selectedCateogry);
+        }
+        else{
+            listed = eventDataSource.getAllEvents();
+        }
+        EventAdapter ca = new EventAdapter(listed);
+        recList.setAdapter(ca);
+    }
 
-        List<EventInfo> result = new ArrayList<EventInfo>();
+    private void loadCategories() {
+        categories = new ArrayList<>();
+        categories.add(getString(R.string.app_name));
+        categories.add(getString(R.string.title_section1));
+        categories.add(getString(R.string.title_section2));
+        categories.add(getString(R.string.title_section3));
+        categories.add(getString(R.string.title_section4));
+        categories.add(getString(R.string.title_section5));
+    }
+
+    private void createMockList(int size) {
+        eventDataSource.deleteAllEvents();
         for (int i=1; i <= size; i++) {
             EventInfo ci = new EventInfo();
-            ci.id = i;
             ci.title = "SampleEvent"+i;
-            ci.description = "Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium quis, sem. ";
-            result.add(ci);
+            ci.description = "text sample";
+            ci.category = (i%5)+1;
+            eventDataSource.createEvent(ci);
         }
-        return result;
     }
 
     @Override
@@ -91,26 +127,15 @@ public class MainActivity extends Activity
     }
 
     public void onSectionAttached(int number) {
-        switch (number) {
-            case 1:
-                mTitle = getString(R.string.app_name);
-                break;
-            case 2:
-                mTitle = getString(R.string.title_section1);
-                break;
-            case 3:
-                mTitle = getString(R.string.title_section2);
-                break;
-            case 4:
-                mTitle = getString(R.string.title_section3);
-                break;
-            case 5:
-                mTitle = getString(R.string.title_section4);
-                break;
-            case 6:
-                mTitle = getString(R.string.title_section5);
-                break;
-        }
+        mTitle=getSectionTitle(number);
+
+    }
+
+    private CharSequence getSectionTitle(int number) {
+        int cat=number-1;
+        selectedCateogry = cat;
+        loadSelectedCategory();
+        return categories.get(cat);
     }
 
     public void restoreActionBar() {
@@ -140,8 +165,6 @@ public class MainActivity extends Activity
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-
         return super.onOptionsItemSelected(item);
     }
 
