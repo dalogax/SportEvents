@@ -10,10 +10,16 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="400dp"
+            android:id="@+id/eventImage" />
+
         <TextView
             android:id="@+id/title"
             android:layout_width="match_parent"
-            android:layout_height="400dp"
+            android:layout_height="50dp"
             android:background="@color/cardview_light_background"
             android:text="title"
             android:gravity="bottom|center"

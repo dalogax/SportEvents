@@ -14,7 +14,7 @@ public class EventDataSource {
     // Database fields
     private SQLiteDatabase database;
     private MySQLiteHelper dbHelper;
-    private String[] allColumns = { MySQLiteHelper.COLUMN_ID,
+    private String[] allColumns = { MySQLiteHelper.COLUMN_ID, MySQLiteHelper.COLUMN_OBJECTID,
             MySQLiteHelper.COLUMN_TITLE, MySQLiteHelper.COLUMN_DESCRIPTION,
             MySQLiteHelper.COLUMN_CATEGORY, MySQLiteHelper.COLUMN_DATE};
 
@@ -30,8 +30,9 @@ public class EventDataSource {
         dbHelper.close();
     }
 
-    public EventInfo createEvent(String title, String description, int category, String date) {
+    public EventInfo createEvent(String objectId, String title, String description, int category, String date) {
         ContentValues values = new ContentValues();
+        values.put(MySQLiteHelper.COLUMN_OBJECTID, objectId);
         values.put(MySQLiteHelper.COLUMN_TITLE, title);
         values.put(MySQLiteHelper.COLUMN_DESCRIPTION, description);
         values.put(MySQLiteHelper.COLUMN_CATEGORY, category);
@@ -48,7 +49,7 @@ public class EventDataSource {
     }
 
     public EventInfo createEvent(EventInfo event) {
-        return createEvent(event.getTitle(), event.getDescription(), event.getCategory(), event.getDate());
+        return createEvent(event.getObjectId(), event.getTitle(), event.getDescription(), event.getCategory(), event.getDate());
     }
 
     public void deleteEvent(int id) {
@@ -62,12 +63,26 @@ public class EventDataSource {
         database.delete(MySQLiteHelper.TABLE_EVENTS, null, null);
     }
 
-    public EventInfo getEvent(long id) {
+    public EventInfo getEvent(Long id) {
         EventInfo event = null;
         Cursor cursor = database.query(MySQLiteHelper.TABLE_EVENTS,
-                allColumns, MySQLiteHelper.COLUMN_ID + "=" + id, null, null, null, null);
-        cursor.moveToFirst();
-        event = cursorToEvent(cursor);
+                allColumns, MySQLiteHelper.COLUMN_ID + " = " + id, null, null, null, null);
+        if (cursor.getCount()>0) {
+            cursor.moveToFirst();
+            event = cursorToEvent(cursor);
+        }
+        cursor.close();
+        return event;
+    }
+
+    public EventInfo getEvent(String objectId) {
+        EventInfo event = null;
+        Cursor cursor = database.query(MySQLiteHelper.TABLE_EVENTS,
+                allColumns, MySQLiteHelper.COLUMN_OBJECTID + " = '"+objectId+"'", null, null, null, null);
+        if (cursor.getCount()>0) {
+            cursor.moveToFirst();
+            event = cursorToEvent(cursor);
+        }
         cursor.close();
         return event;
     }
@@ -88,12 +103,21 @@ public class EventDataSource {
         return events;
     }
 
-    public List<EventInfo> getEventsByCategory(int category) {
+    public List<EventInfo> searchEventsByCategory(int category, String term) {
         List<EventInfo> events = new ArrayList<EventInfo>();
-
-        Cursor cursor = database.query(MySQLiteHelper.TABLE_EVENTS,
-                allColumns, MySQLiteHelper.COLUMN_CATEGORY + "=" + category, null, null, null, null);
-
+        Cursor cursor;
+        String query = "";
+        if (category>0) {
+            query = MySQLiteHelper.COLUMN_CATEGORY + "=" + category;
+            if (term != null && term.length()>0){
+                query = query + " AND ";
+            }
+        }
+        if (term != null && term.length()>0){
+            query = query + MySQLiteHelper.COLUMN_TITLE + " like '%" + term + "%'";
+        }
+        cursor = database.query(MySQLiteHelper.TABLE_EVENTS,
+                allColumns, query, null, null, null, null);
         cursor.moveToFirst();
         while (!cursor.isAfterLast()) {
             EventInfo event = cursorToEvent(cursor);
@@ -107,10 +131,11 @@ public class EventDataSource {
     private EventInfo cursorToEvent(Cursor cursor) {
         EventInfo event = new EventInfo();
         event.setId(cursor.getLong(0));
-        event.setTitle(cursor.getString(1));
-        event.setDescription(cursor.getString(2));
-        event.setCategory(cursor.getInt(3));
-        event.setDate(cursor.getString(4));
+        event.setObjectId(cursor.getString(1));
+        event.setTitle(cursor.getString(2));
+        event.setDescription(cursor.getString(3));
+        event.setCategory(cursor.getInt(4));
+        event.setDate(cursor.getString(5));
         return event;
     }
 

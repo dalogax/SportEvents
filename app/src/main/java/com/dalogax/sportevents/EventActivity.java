@@ -2,12 +2,18 @@ package com.dalogax.sportevents;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import java.io.File;
 
 public class EventActivity extends Activity {
 
@@ -21,8 +27,14 @@ public class EventActivity extends Activity {
         if (event!=null){
             ActionBar actionBar = getActionBar();
             actionBar.setTitle(event.title);
-            ImageView image = (ImageView) findViewById(R.id.e_image);
-            image.setImageResource(R.drawable.race1);
+            ContextWrapper cw = new ContextWrapper(getApplicationContext());
+            File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
+            File imgFile=new File(directory,event.getObjectId()+".jpg");
+            if(imgFile.exists()){
+                Bitmap image = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
+                ImageView imageview = (ImageView) findViewById(R.id.e_image);
+                imageview.setImageBitmap(image);
+            }
             TextView eDesc = (TextView) findViewById(R.id.e_description);
             eDesc.setText(event.description);
         }

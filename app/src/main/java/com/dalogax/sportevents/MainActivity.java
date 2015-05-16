@@ -5,17 +5,33 @@ import android.app.Activity;
 import android.app.ActionBar;
 import android.app.Fragment;
 import android.app.FragmentManager;
+import android.app.SearchManager;
+import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.support.v4.widget.DrawerLayout;
+import android.widget.SearchView;
 
+import com.parse.FindCallback;
+import com.parse.GetDataCallback;
+import com.parse.Parse;
+import com.parse.ParseException;
+import com.parse.ParseFile;
+import com.parse.ParseObject;
+import com.parse.ParseQuery;
+
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
 
@@ -34,6 +50,8 @@ public class MainActivity extends Activity
 
     public EventDataSource eventDataSource;
 
+    RecyclerView recList = null;
+
     public static String event = "EVENT";
 
     public List<EventInfo> listed = new ArrayList<EventInfo>();
@@ -51,11 +69,13 @@ public class MainActivity extends Activity
 
         setContentView(R.layout.activity_main);
 
-        eventDataSource = new EventDataSource(this);
-        eventDataSource.open();
-        if (eventDataSource.getAllEvents().size()==0) {
-            createMockList(12);
-        }
+        //getEventDataSource().deleteAllEvents();
+        obtainEventsFromCloud();
+
+        //if (getEventDataSource().getAllEvents().size()==0) {
+        //    createMockList(12);
+        //}
+
         mNavigationDrawerFragment = (NavigationDrawerFragment)
                 getFragmentManager().findFragmentById(R.id.navigation_drawer);
         mTitle = getTitle();
@@ -64,36 +84,122 @@ public class MainActivity extends Activity
                 R.id.navigation_drawer,
                 (DrawerLayout) findViewById(R.id.drawer_layout));
 
-        RecyclerView recList = (RecyclerView) findViewById(R.id.cardList);
-        recList.setHasFixedSize(true);
-        LinearLayoutManager llm = new LinearLayoutManager(this);
-        llm.setOrientation(LinearLayoutManager.VERTICAL);
-        recList.setLayoutManager(llm);
-
-        recList.addOnItemTouchListener(
-                new RecyclerItemClickListener(getApplicationContext(), new RecyclerItemClickListener.OnItemClickListener() {
-                    @Override public void onItemClick(View view, int position) {
-                        Intent intent = new Intent(getBaseContext(), EventActivity.class);
-                        intent.putExtra(event, eventDataSource.getEvent(listed.get(position).getId()));
-                        startActivity(intent);
-                    }
-                })
-        );
-        listed = eventDataSource.getAllEvents();
+        listed = getEventDataSource().getAllEvents();
         EventAdapter ca = new EventAdapter(listed);
-        recList.setAdapter(ca);
+        getRecList().setAdapter(ca);
+    }
+
+    private void obtainEventsFromCloud() {
+        ParseQuery<ParseObject> query = ParseQuery.getQuery("EventInfo");
+        query.orderByAscending("date");
+        query.setLimit(50);
+        query.findInBackground(new FindCallback<ParseObject>() {
+            public void done(List<ParseObject> eventList, ParseException e) {
+                if (e == null) {
+                    Log.d("Parse", "Retrieved " + eventList.size() + " events");
+                    saveEventsInDB(eventList);
+                    loadSelectedCategory();
+                } else {
+                    Log.d("Parse", "Error: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private void saveEventsInDB(List<ParseObject> eventList){
+        for (ParseObject obj : eventList){
+            if (getEventDataSource().getEvent(obj.getObjectId())==null) {
+                EventInfo ci = new EventInfo();
+                ci.setObjectId(obj.getObjectId());
+                ci.setTitle(obj.getString("title"));
+                ci.setDescription(obj.getString("description"));
+                ci.setCategory(obj.getInt("category"));
+                ci.setDate(obj.getDate("date").toString());
+                final EventInfo newEvent = getEventDataSource().createEvent(ci);
+                if (newEvent != null) {
+                    ParseFile imageFile = obj.getParseFile("image");
+                    imageFile.getDataInBackground(new GetDataCallback() {
+                        public void done(byte[] data, ParseException e) {
+                            if (e == null) {
+                                Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+                                saveImageToInternalStorage(bitmap, newEvent.getObjectId());
+                            } else {
+                                Log.d("Parse", "Error al obtener el fichero de imagen");
+                            }
+                        }
+                    });
+                }
+            }
+        }
+    }
+
+    private String saveImageToInternalStorage(Bitmap bitmapImage,String objectId){
+        ContextWrapper cw = new ContextWrapper(getApplicationContext());
+        File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
+        File mypath=new File(directory,objectId+".jpg");
+        FileOutputStream fos = null;
+        try {
+            fos = new FileOutputStream(mypath);
+            bitmapImage.compress(Bitmap.CompressFormat.PNG, 100, fos);
+            fos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return directory.getAbsolutePath();
+    }
+
+    private void createMockList(int size) {
+        getEventDataSource().deleteAllEvents();
+        for (int i=1; i <= size; i++) {
+            EventInfo ci = new EventInfo();
+            ci.title = "SampleEvent"+i;
+            ci.description = "text sample";
+            ci.category = (i%5)+1;
+            getEventDataSource().createEvent(ci);
+        }
     }
 
     private void loadSelectedCategory(){
-        RecyclerView recList = (RecyclerView) findViewById(R.id.cardList);
-        if (selectedCateogry>0) {
-            listed = eventDataSource.getEventsByCategory(selectedCateogry);
-        }
-        else{
-            listed = eventDataSource.getAllEvents();
-        }
+        listed = getEventDataSource().searchEventsByCategory(selectedCateogry,null);
         EventAdapter ca = new EventAdapter(listed);
-        recList.setAdapter(ca);
+        getRecList().setAdapter(ca);
+    }
+
+    private void loadSearchByName(String term){
+        listed = getEventDataSource().searchEventsByCategory(selectedCateogry,term);
+        EventAdapter ca = new EventAdapter(listed);
+        getRecList().setAdapter(ca);
+    }
+
+    private EventDataSource getEventDataSource(){
+        if(eventDataSource==null){
+            eventDataSource = new EventDataSource(this);
+            eventDataSource.open();
+        }
+        return eventDataSource;
+    }
+
+    private RecyclerView getRecList() {
+
+        if (recList==null) {
+            recList = (RecyclerView) findViewById(R.id.cardList);
+            recList.setHasFixedSize(true);
+            LinearLayoutManager llm = new LinearLayoutManager(this);
+            llm.setOrientation(LinearLayoutManager.VERTICAL);
+            recList.setLayoutManager(llm);
+
+            recList.addOnItemTouchListener(
+                new RecyclerItemClickListener(getApplicationContext(), new RecyclerItemClickListener.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(View view, int position) {
+                        Intent intent = new Intent(getBaseContext(), EventActivity.class);
+                        intent.putExtra(event, getEventDataSource().getEvent(listed.get(position).getId()));
+                        startActivity(intent);
+                    }
+                })
+            );
+        }
+        return recList;
     }
 
     private void loadCategories() {
@@ -104,17 +210,6 @@ public class MainActivity extends Activity
         categories.add(getString(R.string.title_section3));
         categories.add(getString(R.string.title_section4));
         categories.add(getString(R.string.title_section5));
-    }
-
-    private void createMockList(int size) {
-        eventDataSource.deleteAllEvents();
-        for (int i=1; i <= size; i++) {
-            EventInfo ci = new EventInfo();
-            ci.title = "SampleEvent"+i;
-            ci.description = "text sample";
-            ci.category = (i%5)+1;
-            eventDataSource.createEvent(ci);
-        }
     }
 
     @Override
@@ -145,7 +240,6 @@ public class MainActivity extends Activity
         actionBar.setTitle(mTitle);
     }
 
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         if (!mNavigationDrawerFragment.isDrawerOpen()) {
@@ -154,6 +248,35 @@ public class MainActivity extends Activity
             // decide what to show in the action bar.
             getMenuInflater().inflate(R.menu.main, menu);
             restoreActionBar();
+
+
+            // Associate searchable configuration with the SearchView
+            SearchManager searchManager =
+                    (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+            SearchView searchView =
+                    (SearchView) menu.findItem(R.id.search).getActionView();
+            searchView.setSearchableInfo(
+                    searchManager.getSearchableInfo(getComponentName()));
+
+            final SearchView.OnQueryTextListener queryTextListener = new SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    loadSearchByName(newText);
+                    return true;
+                }
+
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    loadSearchByName(query);
+                    return true;
+                }
+            };
+
+            searchView.setOnQueryTextListener(queryTextListener);
+
+
+
+
             return true;
         }
         return super.onCreateOptionsMenu(menu);

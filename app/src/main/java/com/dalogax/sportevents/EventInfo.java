@@ -4,19 +4,28 @@ import java.io.Serializable;
 
 public class EventInfo implements Serializable{
 
-    public long id;
+    public Long id;
+    public String objectId;
     public String title;
     public String description;
     public int category;
 
     public String date;
 
-    public long getId() {
+    public Long getId() {
         return id;
     }
 
-    public void setId(long id) {
+    public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getObjectId() {
+        return objectId;
+    }
+
+    public void setObjectId(String objectId) {
+        this.objectId = objectId;
     }
 
     public String getTitle() {
