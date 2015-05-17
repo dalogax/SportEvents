@@ -11,6 +11,7 @@ import android.content.ContextWrapper;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -59,8 +60,6 @@ public class MainActivity extends Activity
 
     private ProgressBar spinner;
 
-    int dataToLoad;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (categories==null){
@@ -82,84 +81,10 @@ public class MainActivity extends Activity
             spinner = (ProgressBar) findViewById(R.id.progressBar1);
         }
 
-        obtainEventsFromCloud();
+        //obtainEventsFromCloud();
+        new DownloadDataTask().execute("a");
 
         ((DrawerLayout) findViewById(R.id.drawer_layout)).closeDrawer(Gravity.START);
-    }
-
-    private void obtainEventsFromCloud() {
-        spinner.setVisibility(View.VISIBLE);
-        ParseQuery<ParseObject> query = ParseQuery.getQuery("EventInfo");
-        query.orderByAscending("date");
-        query.whereGreaterThanOrEqualTo("date", new Date());
-        query.setLimit(50);
-        query.findInBackground(new FindCallback<ParseObject>() {
-            public void done(List<ParseObject> eventList, ParseException e) {
-                if (e == null) {
-                    Log.d("Parse", "Retrieved " + eventList.size() + " events");
-                    saveEventsInDB(eventList);
-                } else {
-                    Log.d("Parse", "Error: " + e.getMessage());
-                    spinner.setVisibility(View.GONE);
-                }
-            }
-        });
-    }
-
-    private void saveEventsInDB(List<ParseObject> eventList){
-        dataToLoad = eventList.size();
-        for (ParseObject obj : eventList){
-            if (getEventDataSource().getEvent(obj.getObjectId())==null) {
-                EventInfo ci = new EventInfo();
-                ci.setObjectId(obj.getObjectId());
-                ci.setTitle(obj.getString("title"));
-                ci.setDescription(obj.getString("description"));
-                ci.setCategory(obj.getInt("category"));
-                ci.setDate(obj.getDate("date").toString());
-                final EventInfo newEvent = getEventDataSource().createEvent(ci);
-                if (newEvent != null) {
-                    ParseFile imageFile = obj.getParseFile("image");
-                    imageFile.getDataInBackground(new GetDataCallback() {
-                        public void done(byte[] data, ParseException e) {
-                            if (e == null) {
-                                Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-                                saveImageToInternalStorage(bitmap, newEvent.getObjectId());
-                                dataToLoad--;
-                                if (dataToLoad==0) {
-                                    loadSelectedCategory();
-                                    spinner.setVisibility(View.GONE);
-                                }
-                            } else {
-                                Log.d("Parse", "Error al obtener el fichero de imagen");
-                                spinner.setVisibility(View.GONE);
-                            }
-                        }
-                    });
-                }
-            }
-            else {
-                dataToLoad--;
-                if (dataToLoad == 0) {
-                    loadSelectedCategory();
-                    spinner.setVisibility(View.GONE);
-                }
-            }
-        }
-    }
-
-    private String saveImageToInternalStorage(Bitmap bitmapImage,String objectId){
-        ContextWrapper cw = new ContextWrapper(getApplicationContext());
-        File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
-        File mypath=new File(directory,objectId+".jpg");
-        FileOutputStream fos;
-        try {
-            fos = new FileOutputStream(mypath);
-            bitmapImage.compress(Bitmap.CompressFormat.PNG, 100, fos);
-            fos.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return directory.getAbsolutePath();
     }
 
     private void loadSelectedCategory(){
@@ -297,6 +222,73 @@ public class MainActivity extends Activity
             super.onAttach(activity);
             ((MainActivity) activity).onSectionAttached(
                     getArguments().getInt(ARG_SECTION_NUMBER));
+        }
+    }
+
+    private class DownloadDataTask extends AsyncTask<String, Float, Integer> {
+        protected Integer doInBackground(String... urls) {
+            spinner.setVisibility(View.VISIBLE);
+            obtainEventsFromCloud();
+            return 0;
+        }
+
+        protected void onPostExecute(Integer bytes){
+            loadSelectedCategory();
+            spinner.setVisibility(View.GONE);
+        }
+
+        private void obtainEventsFromCloud() {
+            ParseQuery<ParseObject> query = ParseQuery.getQuery("EventInfo");
+            query.orderByAscending("date");
+            query.whereGreaterThanOrEqualTo("date", new Date());
+            query.setLimit(50);
+            List<ParseObject> eventList = null;
+            try {
+                eventList = query.find();
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            saveEventsInDB(eventList);
+        }
+
+        private void saveEventsInDB(List<ParseObject> eventList){
+            for (ParseObject obj : eventList){
+                if (getEventDataSource().getEvent(obj.getObjectId())==null) {
+                    EventInfo ci = new EventInfo();
+                    ci.setObjectId(obj.getObjectId());
+                    ci.setTitle(obj.getString("title"));
+                    ci.setDescription(obj.getString("description"));
+                    ci.setCategory(obj.getInt("category"));
+                    ci.setDate(obj.getDate("date").toString());
+                    final EventInfo newEvent = getEventDataSource().createEvent(ci);
+                    if (newEvent != null) {
+                        ParseFile imageFile = obj.getParseFile("image");
+                        byte[] data = new byte[0];
+                        try {
+                            data = imageFile.getData();
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                        }
+                        Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+                        saveImageToInternalStorage(bitmap, newEvent.getObjectId());
+                    }
+                }
+            }
+        }
+
+        private String saveImageToInternalStorage(Bitmap bitmapImage,String objectId){
+            ContextWrapper cw = new ContextWrapper(getApplicationContext());
+            File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
+            File mypath=new File(directory,objectId+".jpg");
+            FileOutputStream fos;
+            try {
+                fos = new FileOutputStream(mypath);
+                bitmapImage.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                fos.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return directory.getAbsolutePath();
         }
     }
 }
