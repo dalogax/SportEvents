@@ -15,10 +15,12 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.support.v4.widget.DrawerLayout;
+import android.widget.ProgressBar;
 import android.widget.SearchView;
 
 import com.parse.FindCallback;
@@ -32,20 +34,15 @@ import com.parse.ParseQuery;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 
 public class MainActivity extends Activity
         implements NavigationDrawerFragment.NavigationDrawerCallbacks {
 
-    /**
-     * Fragment managing the behaviors, interactions and presentation of the navigation drawer.
-     */
     private NavigationDrawerFragment mNavigationDrawerFragment;
 
-    /**
-     * Used to store the last screen title. For use in {@link #restoreActionBar()}.
-     */
     private CharSequence mTitle;
 
     public EventDataSource eventDataSource;
@@ -60,21 +57,18 @@ public class MainActivity extends Activity
 
     public int selectedCateogry = 0;
 
+    private ProgressBar spinner;
+
+    int dataToLoad;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (categories==null){
             loadCategories();
         }
+
         super.onCreate(savedInstanceState);
-
         setContentView(R.layout.activity_main);
-
-        //getEventDataSource().deleteAllEvents();
-        obtainEventsFromCloud();
-
-        //if (getEventDataSource().getAllEvents().size()==0) {
-        //    createMockList(12);
-        //}
 
         mNavigationDrawerFragment = (NavigationDrawerFragment)
                 getFragmentManager().findFragmentById(R.id.navigation_drawer);
@@ -84,29 +78,36 @@ public class MainActivity extends Activity
                 R.id.navigation_drawer,
                 (DrawerLayout) findViewById(R.id.drawer_layout));
 
-        listed = getEventDataSource().getAllEvents();
-        EventAdapter ca = new EventAdapter(listed);
-        getRecList().setAdapter(ca);
+        if (spinner==null) {
+            spinner = (ProgressBar) findViewById(R.id.progressBar1);
+        }
+
+        obtainEventsFromCloud();
+
+        ((DrawerLayout) findViewById(R.id.drawer_layout)).closeDrawer(Gravity.START);
     }
 
     private void obtainEventsFromCloud() {
+        spinner.setVisibility(View.VISIBLE);
         ParseQuery<ParseObject> query = ParseQuery.getQuery("EventInfo");
         query.orderByAscending("date");
+        query.whereGreaterThanOrEqualTo("date", new Date());
         query.setLimit(50);
         query.findInBackground(new FindCallback<ParseObject>() {
             public void done(List<ParseObject> eventList, ParseException e) {
                 if (e == null) {
                     Log.d("Parse", "Retrieved " + eventList.size() + " events");
                     saveEventsInDB(eventList);
-                    loadSelectedCategory();
                 } else {
                     Log.d("Parse", "Error: " + e.getMessage());
+                    spinner.setVisibility(View.GONE);
                 }
             }
         });
     }
 
     private void saveEventsInDB(List<ParseObject> eventList){
+        dataToLoad = eventList.size();
         for (ParseObject obj : eventList){
             if (getEventDataSource().getEvent(obj.getObjectId())==null) {
                 EventInfo ci = new EventInfo();
@@ -123,11 +124,24 @@ public class MainActivity extends Activity
                             if (e == null) {
                                 Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
                                 saveImageToInternalStorage(bitmap, newEvent.getObjectId());
+                                dataToLoad--;
+                                if (dataToLoad==0) {
+                                    loadSelectedCategory();
+                                    spinner.setVisibility(View.GONE);
+                                }
                             } else {
                                 Log.d("Parse", "Error al obtener el fichero de imagen");
+                                spinner.setVisibility(View.GONE);
                             }
                         }
                     });
+                }
+            }
+            else {
+                dataToLoad--;
+                if (dataToLoad == 0) {
+                    loadSelectedCategory();
+                    spinner.setVisibility(View.GONE);
                 }
             }
         }
@@ -137,7 +151,7 @@ public class MainActivity extends Activity
         ContextWrapper cw = new ContextWrapper(getApplicationContext());
         File directory = cw.getDir("imageDir", Context.MODE_PRIVATE);
         File mypath=new File(directory,objectId+".jpg");
-        FileOutputStream fos = null;
+        FileOutputStream fos;
         try {
             fos = new FileOutputStream(mypath);
             bitmapImage.compress(Bitmap.CompressFormat.PNG, 100, fos);
@@ -146,17 +160,6 @@ public class MainActivity extends Activity
             e.printStackTrace();
         }
         return directory.getAbsolutePath();
-    }
-
-    private void createMockList(int size) {
-        getEventDataSource().deleteAllEvents();
-        for (int i=1; i <= size; i++) {
-            EventInfo ci = new EventInfo();
-            ci.title = "SampleEvent"+i;
-            ci.description = "text sample";
-            ci.category = (i%5)+1;
-            getEventDataSource().createEvent(ci);
-        }
     }
 
     private void loadSelectedCategory(){
@@ -180,7 +183,6 @@ public class MainActivity extends Activity
     }
 
     private RecyclerView getRecList() {
-
         if (recList==null) {
             recList = (RecyclerView) findViewById(R.id.cardList);
             recList.setHasFixedSize(true);
@@ -214,7 +216,6 @@ public class MainActivity extends Activity
 
     @Override
     public void onNavigationDrawerItemSelected(int position) {
-        // update the main content by replacing fragments
         FragmentManager fragmentManager = getFragmentManager();
         fragmentManager.beginTransaction()
                 .replace(R.id.container, PlaceholderFragment.newInstance(position + 1))
@@ -243,28 +244,20 @@ public class MainActivity extends Activity
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         if (!mNavigationDrawerFragment.isDrawerOpen()) {
-            // Only show items in the action bar relevant to this screen
-            // if the drawer is not showing. Otherwise, let the drawer
-            // decide what to show in the action bar.
             getMenuInflater().inflate(R.menu.main, menu);
             restoreActionBar();
-
-
-            // Associate searchable configuration with the SearchView
             SearchManager searchManager =
                     (SearchManager) getSystemService(Context.SEARCH_SERVICE);
             SearchView searchView =
                     (SearchView) menu.findItem(R.id.search).getActionView();
             searchView.setSearchableInfo(
                     searchManager.getSearchableInfo(getComponentName()));
-
             final SearchView.OnQueryTextListener queryTextListener = new SearchView.OnQueryTextListener() {
                 @Override
                 public boolean onQueryTextChange(String newText) {
                     loadSearchByName(newText);
                     return true;
                 }
-
                 @Override
                 public boolean onQueryTextSubmit(String query) {
                     loadSearchByName(query);
@@ -273,10 +266,6 @@ public class MainActivity extends Activity
             };
 
             searchView.setOnQueryTextListener(queryTextListener);
-
-
-
-
             return true;
         }
         return super.onCreateOptionsMenu(menu);
@@ -284,27 +273,14 @@ public class MainActivity extends Activity
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         return super.onOptionsItemSelected(item);
     }
 
-    /**
-     * A placeholder fragment containing a simple view.
-     */
     public static class PlaceholderFragment extends Fragment {
-        /**
-         * The fragment argument representing the section number for this
-         * fragment.
-         */
+
         private static final String ARG_SECTION_NUMBER = "section_number";
 
-        /**
-         * Returns a new instance of this fragment for the given section
-         * number.
-         */
         public static PlaceholderFragment newInstance(int sectionNumber) {
             PlaceholderFragment fragment = new PlaceholderFragment();
             Bundle args = new Bundle();
@@ -322,7 +298,5 @@ public class MainActivity extends Activity
             ((MainActivity) activity).onSectionAttached(
                     getArguments().getInt(ARG_SECTION_NUMBER));
         }
-
     }
-
 }

@@ -10,20 +10,21 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="400dp"
             android:id="@+id/eventImage" />
-
         <TextView
             android:id="@+id/title"
             android:layout_width="match_parent"
             android:layout_height="50dp"
             android:background="@color/cardview_light_background"
             android:text="title"
-            android:gravity="bottom|center"
-            android:textColor="@android:color/holo_red_dark"
-            android:textSize="28dp"/>
+            android:gravity="center|center"
+            android:textColor="@android:color/holo_green_dark"
+            android:textSize="20dp">
+
+        </TextView>
+
     </RelativeLayout>
 </android.support.v7.widget.CardView>
