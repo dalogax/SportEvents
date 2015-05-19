@@ -10,6 +10,7 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.DatePicker;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -37,6 +38,10 @@ public class EventActivity extends Activity {
             }
             TextView eDesc = (TextView) findViewById(R.id.e_description);
             eDesc.setText(event.description);
+            TextView eDate = (TextView) findViewById(R.id.e_date);
+            eDate.setText(event.getDate());
+            TextView eTitle = (TextView) findViewById(R.id.e_title);
+            eTitle.setText(event.getTitle());
         }
     }
 

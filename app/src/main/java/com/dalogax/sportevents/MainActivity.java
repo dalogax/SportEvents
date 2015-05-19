@@ -1,7 +1,6 @@
 package com.dalogax.sportevents;
 
 import android.app.Activity;
-
 import android.app.ActionBar;
 import android.app.Fragment;
 import android.app.FragmentManager;
@@ -15,7 +14,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -23,15 +21,10 @@ import android.view.View;
 import android.support.v4.widget.DrawerLayout;
 import android.widget.ProgressBar;
 import android.widget.SearchView;
-
-import com.parse.FindCallback;
-import com.parse.GetDataCallback;
-import com.parse.Parse;
 import com.parse.ParseException;
 import com.parse.ParseFile;
 import com.parse.ParseObject;
 import com.parse.ParseQuery;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
@@ -81,8 +74,7 @@ public class MainActivity extends Activity
             spinner = (ProgressBar) findViewById(R.id.progressBar1);
         }
 
-        //obtainEventsFromCloud();
-        new DownloadDataTask().execute("a");
+        new DownloadDataTask().execute();
 
         ((DrawerLayout) findViewById(R.id.drawer_layout)).closeDrawer(Gravity.START);
     }
@@ -226,7 +218,7 @@ public class MainActivity extends Activity
     }
 
     private class DownloadDataTask extends AsyncTask<String, Float, Integer> {
-        protected Integer doInBackground(String... urls) {
+        protected Integer doInBackground(String... data) {
             spinner.setVisibility(View.VISIBLE);
             obtainEventsFromCloud();
             return 0;
