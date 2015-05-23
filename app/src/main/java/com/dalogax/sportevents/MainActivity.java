@@ -15,12 +15,23 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.support.v4.widget.DrawerLayout;
+import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.SearchView;
+import android.widget.Toast;
+
+import com.facebook.CallbackManager;
+import com.facebook.FacebookCallback;
+import com.facebook.FacebookException;
+import com.facebook.FacebookSdk;
+import com.facebook.appevents.AppEventsLogger;
+import com.facebook.login.LoginResult;
+import com.facebook.login.widget.LoginButton;
 import com.parse.ParseException;
 import com.parse.ParseFile;
 import com.parse.ParseObject;
@@ -30,6 +41,8 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
+import javax.xml.datatype.Duration;
 
 
 public class MainActivity extends Activity
@@ -53,6 +66,8 @@ public class MainActivity extends Activity
 
     private ProgressBar spinner;
 
+    CallbackManager callbackManager;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (categories==null){
@@ -60,6 +75,9 @@ public class MainActivity extends Activity
         }
 
         super.onCreate(savedInstanceState);
+
+        FacebookSdk.sdkInitialize(getApplicationContext());
+
         setContentView(R.layout.activity_main);
 
         mNavigationDrawerFragment = (NavigationDrawerFragment)
@@ -77,6 +95,32 @@ public class MainActivity extends Activity
         new DownloadDataTask().execute();
 
         ((DrawerLayout) findViewById(R.id.drawer_layout)).closeDrawer(Gravity.START);
+
+        callbackManager = CallbackManager.Factory.create();
+        LoginButton loginButton = (LoginButton) findViewById(R.id.login_button);
+        loginButton.setReadPermissions("user_friends");
+        loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
+            @Override
+            public void onSuccess(LoginResult loginResult) {
+                Toast.makeText(getApplicationContext(), "Logado! user:" + loginResult.toString(), Toast.LENGTH_LONG);
+            }
+
+            @Override
+            public void onCancel() {
+                Toast.makeText(getApplicationContext(), "cancelado!", Toast.LENGTH_LONG);
+            }
+
+            @Override
+            public void onError(FacebookException exception) {
+                Toast.makeText(getApplicationContext(), "Error!", Toast.LENGTH_LONG);
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        callbackManager.onActivityResult(requestCode, resultCode, data);
     }
 
     private void loadSelectedCategory(){
@@ -108,14 +152,14 @@ public class MainActivity extends Activity
             recList.setLayoutManager(llm);
 
             recList.addOnItemTouchListener(
-                new RecyclerItemClickListener(getApplicationContext(), new RecyclerItemClickListener.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(View view, int position) {
-                        Intent intent = new Intent(getBaseContext(), EventActivity.class);
-                        intent.putExtra(event, getEventDataSource().getEvent(listed.get(position).getId()));
-                        startActivity(intent);
-                    }
-                })
+                    new RecyclerItemClickListener(getApplicationContext(), new RecyclerItemClickListener.OnItemClickListener() {
+                        @Override
+                        public void onItemClick(View view, int position) {
+                            Intent intent = new Intent(getBaseContext(), EventActivity.class);
+                            intent.putExtra(event, getEventDataSource().getEvent(listed.get(position).getId()));
+                            startActivity(intent);
+                        }
+                    })
             );
         }
         return recList;
@@ -192,6 +236,22 @@ public class MainActivity extends Activity
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Logs 'install' and 'app activate' App Events.
+        AppEventsLogger.activateApp(this);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        // Logs 'app deactivate' App Event.
+        AppEventsLogger.deactivateApp(this);
     }
 
     public static class PlaceholderFragment extends Fragment {
@@ -283,4 +343,5 @@ public class MainActivity extends Activity
             return directory.getAbsolutePath();
         }
     }
+
 }
