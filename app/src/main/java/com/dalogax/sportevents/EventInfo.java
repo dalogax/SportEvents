@@ -8,6 +8,7 @@ public class EventInfo implements Serializable{
     public String objectId;
     public String title;
     public String description;
+    public String singuplink;
     public int category;
 
     public String date;
@@ -58,5 +59,13 @@ public class EventInfo implements Serializable{
 
     public void setDate(String date) {
         this.date = date;
+    }
+
+    public String getSinguplink() {
+        return singuplink;
+    }
+
+    public void setSinguplink(String singuplink) {
+        this.singuplink = singuplink;
     }
 }

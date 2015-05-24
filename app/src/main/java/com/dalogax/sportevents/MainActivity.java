@@ -106,10 +106,6 @@ public class MainActivity extends Activity
         ((DrawerLayout) findViewById(R.id.drawer_layout)).closeDrawer(Gravity.START);
 
         initializeFacebookButton();
-
-
-
-
     }
 
     private void initializeFacebookButton() {
@@ -350,6 +346,7 @@ public class MainActivity extends Activity
                     ci.setObjectId(obj.getObjectId());
                     ci.setTitle(obj.getString("title"));
                     ci.setDescription(obj.getString("description"));
+                    ci.setSinguplink(obj.getString("singuplink"));
                     ci.setCategory(obj.getInt("category"));
                     ci.setDate(obj.getDate("date").toString());
                     final EventInfo newEvent = getEventDataSource().createEvent(ci);

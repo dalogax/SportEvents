@@ -2,11 +2,13 @@ package com.dalogax.sportevents;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -19,13 +21,20 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.facebook.AccessToken;
+import com.parse.DeleteCallback;
+import com.parse.ParseException;
 import com.parse.ParseObject;
+import com.parse.ParseQuery;
+import com.parse.SaveCallback;
 
 import java.io.File;
+import java.util.Date;
+import java.util.List;
 
 public class EventActivity extends Activity {
 
     EventInfo event;
+    ParseObject actualEventAssist;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,22 +60,75 @@ public class EventActivity extends Activity {
             eDate.setText(event.getDate());
             TextView eTitle = (TextView) findViewById(R.id.e_title);
             eTitle.setText(event.getTitle());
-            Button buttonVoy = (Button) findViewById(R.id.button_voy);
-            if (AccessToken.getCurrentAccessToken()!=null){
-                buttonVoy.setVisibility(View.VISIBLE);
+            Button buttonSingup = (Button) findViewById(R.id.button_singup);
+            buttonSingup.setOnClickListener(new View.OnClickListener() {
+                public void onClick(View v) {
+                    try {
+                        Intent myIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(event.getSinguplink()));
+                        startActivity(myIntent);
+                    } catch (ActivityNotFoundException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            manageVoyButton();
+        }
+    }
+
+    private void manageVoyButton(){
+        Button buttonVoy = (Button) findViewById(R.id.button_voy);
+        if (AccessToken.getCurrentAccessToken()!=null){
+            buttonVoy.setVisibility(View.VISIBLE);
+            ParseQuery<ParseObject> query = ParseQuery.getQuery("EventAssist");
+            query.whereEqualTo("user", AccessToken.getCurrentAccessToken().getUserId());
+            query.whereEqualTo("event", event.getObjectId());
+            query.setLimit(1);
+            List<ParseObject> eventAssistList = null;
+            try {
+                eventAssistList = query.find();
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            if (eventAssistList!=null && eventAssistList.size()>0) {
+                actualEventAssist = eventAssistList.get(0);
+                buttonVoy.setText(getText(R.string.button_no_voy));
+                buttonVoy.setOnClickListener(new View.OnClickListener() {
+                    public void onClick(View v) {
+                        Log.d("Button Voy", AccessToken.getCurrentAccessToken().getUserId() + " ya no va al evento " + event.getObjectId());
+                        actualEventAssist.deleteInBackground(new DeleteCallback() {
+                            public void done(ParseException e) {
+                                if (e == null) {
+                                    manageVoyButton();
+                                } else {
+                                    Log.d("Parse", "Error al eliminar asistencia");
+                                }
+                            }
+                        });
+                    }
+                });
+            }else{
+                buttonVoy.setText(getText(R.string.button_voy));
                 buttonVoy.setOnClickListener(new View.OnClickListener() {
                     public void onClick(View v) {
                         Log.d("Button Voy", AccessToken.getCurrentAccessToken().getUserId() + " va al evento " + event.getObjectId());
-                        ParseObject gameScore = new ParseObject("EventAssist");
-                        gameScore.put("user", AccessToken.getCurrentAccessToken().getUserId());
-                        gameScore.put("event", event.getObjectId());
-                        gameScore.saveInBackground();
+                        ParseObject po = new ParseObject("EventAssist");
+                        po.put("user", AccessToken.getCurrentAccessToken().getUserId());
+                        po.put("event", event.getObjectId());
+                        po.saveInBackground(new SaveCallback() {
+                            public void done(ParseException e) {
+                                if (e == null) {
+                                    manageVoyButton();
+                                } else {
+                                    Log.d("Parse", "Error al guardar asistencia");
+                                }
+                            }
+                        });
                     }
                 });
             }
-            else {
-                buttonVoy.setVisibility(View.INVISIBLE);
-            }
+        }
+        else {
+            buttonVoy.setVisibility(View.INVISIBLE);
         }
     }
 

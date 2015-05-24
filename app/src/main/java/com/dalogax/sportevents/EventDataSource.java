@@ -16,6 +16,7 @@ public class EventDataSource {
     private MySQLiteHelper dbHelper;
     private String[] allColumns = { MySQLiteHelper.COLUMN_ID, MySQLiteHelper.COLUMN_OBJECTID,
             MySQLiteHelper.COLUMN_TITLE, MySQLiteHelper.COLUMN_DESCRIPTION,
+            MySQLiteHelper.COLUMN_SINGUPLINK,
             MySQLiteHelper.COLUMN_CATEGORY, MySQLiteHelper.COLUMN_DATE};
 
     public EventDataSource(Context context) {
@@ -30,11 +31,12 @@ public class EventDataSource {
         dbHelper.close();
     }
 
-    public EventInfo createEvent(String objectId, String title, String description, int category, String date) {
+    public EventInfo createEvent(String objectId, String title, String description, String singuplink, int category, String date) {
         ContentValues values = new ContentValues();
         values.put(MySQLiteHelper.COLUMN_OBJECTID, objectId);
         values.put(MySQLiteHelper.COLUMN_TITLE, title);
         values.put(MySQLiteHelper.COLUMN_DESCRIPTION, description);
+        values.put(MySQLiteHelper.COLUMN_SINGUPLINK, singuplink);
         values.put(MySQLiteHelper.COLUMN_CATEGORY, category);
         values.put(MySQLiteHelper.COLUMN_DATE, date);
         long insertId = database.insert(MySQLiteHelper.TABLE_EVENTS, null,
@@ -49,7 +51,7 @@ public class EventDataSource {
     }
 
     public EventInfo createEvent(EventInfo event) {
-        return createEvent(event.getObjectId(), event.getTitle(), event.getDescription(), event.getCategory(), event.getDate());
+        return createEvent(event.getObjectId(), event.getTitle(), event.getDescription(), event.getSinguplink(), event.getCategory(), event.getDate());
     }
 
     public void deleteEvent(int id) {
@@ -134,8 +136,9 @@ public class EventDataSource {
         event.setObjectId(cursor.getString(1));
         event.setTitle(cursor.getString(2));
         event.setDescription(cursor.getString(3));
-        event.setCategory(cursor.getInt(4));
-        event.setDate(cursor.getString(5));
+        event.setSinguplink(cursor.getString(4));
+        event.setCategory(cursor.getInt(5));
+        event.setDate(cursor.getString(6));
         return event;
     }
 
