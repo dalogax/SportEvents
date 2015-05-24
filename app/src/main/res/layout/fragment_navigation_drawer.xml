@@ -19,7 +19,13 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:layout_gravity="bottom"
-        android:layout_marginTop="30dp">
+        android:layout_marginTop="15dp">
+        <ImageView
+            android:visibility="invisible"
+            android:layout_gravity="center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/profile_pic"/>
         <TextView
             android:id="@+id/text_facebook"
             android:layout_width="match_parent"
@@ -32,7 +38,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:layout_marginTop="30dp"
+            android:layout_marginTop="15dp"
             android:layout_marginBottom="30dp"/>
     </LinearLayout>
 </LinearLayout>

@@ -14,21 +14,24 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.support.v4.widget.DrawerLayout;
-import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.SearchView;
-import android.widget.Toast;
+import android.widget.TextView;
 
+import com.facebook.AccessToken;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
 import com.facebook.FacebookSdk;
+import com.facebook.GraphRequest;
+import com.facebook.GraphResponse;
 import com.facebook.appevents.AppEventsLogger;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
@@ -36,13 +39,18 @@ import com.parse.ParseException;
 import com.parse.ParseFile;
 import com.parse.ParseObject;
 import com.parse.ParseQuery;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-
-import javax.xml.datatype.Duration;
 
 
 public class MainActivity extends Activity
@@ -68,6 +76,7 @@ public class MainActivity extends Activity
 
     CallbackManager callbackManager;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (categories==null){
@@ -91,28 +100,36 @@ public class MainActivity extends Activity
         if (spinner==null) {
             spinner = (ProgressBar) findViewById(R.id.progressBar1);
         }
-
+        spinner.setVisibility(View.VISIBLE);
         new DownloadDataTask().execute();
 
         ((DrawerLayout) findViewById(R.id.drawer_layout)).closeDrawer(Gravity.START);
 
+        initializeFacebookButton();
+
+
+
+
+    }
+
+    private void initializeFacebookButton() {
         callbackManager = CallbackManager.Factory.create();
         LoginButton loginButton = (LoginButton) findViewById(R.id.login_button);
         loginButton.setReadPermissions("user_friends");
         loginButton.registerCallback(callbackManager, new FacebookCallback<LoginResult>() {
             @Override
             public void onSuccess(LoginResult loginResult) {
-                Toast.makeText(getApplicationContext(), "Logado! user:" + loginResult.toString(), Toast.LENGTH_LONG);
+                Log.d("Facebook","Login success");
             }
 
             @Override
             public void onCancel() {
-                Toast.makeText(getApplicationContext(), "cancelado!", Toast.LENGTH_LONG);
+                Log.d("Facebook","Login canceled");
             }
 
             @Override
             public void onError(FacebookException exception) {
-                Toast.makeText(getApplicationContext(), "Error!", Toast.LENGTH_LONG);
+                Log.d("Facebook","Login error");
             }
         });
     }
@@ -240,17 +257,41 @@ public class MainActivity extends Activity
 
     @Override
     protected void onResume() {
+        if (AccessToken.getCurrentAccessToken()!=null){
+            new AfterLoginTask().execute();
+            GraphRequest request = GraphRequest.newMeRequest(
+                    AccessToken.getCurrentAccessToken(),
+                    new GraphRequest.GraphJSONObjectCallback() {
+                        @Override
+                        public void onCompleted(
+                                JSONObject object,
+                                GraphResponse response) {
+                            TextView textFacebook = (TextView) findViewById(R.id.text_facebook);
+                            try {
+                                textFacebook.setText(getString(R.string.logged_as) + " " + object.getString("name"));
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+            Bundle parameters = new Bundle();
+            parameters.putString("fields", "id,name,link");
+            request.setParameters(parameters);
+            request.executeAsync();
+        }
+        else{
+            TextView textFacebook = (TextView) findViewById(R.id.text_facebook);
+            textFacebook.setText(getString(R.string.text_facebook));
+            ImageView profilePic = (ImageView) findViewById(R.id.profile_pic);
+            profilePic.setVisibility(View.INVISIBLE);
+        }
         super.onResume();
-
-        // Logs 'install' and 'app activate' App Events.
         AppEventsLogger.activateApp(this);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
-        // Logs 'app deactivate' App Event.
         AppEventsLogger.deactivateApp(this);
     }
 
@@ -279,7 +320,6 @@ public class MainActivity extends Activity
 
     private class DownloadDataTask extends AsyncTask<String, Float, Integer> {
         protected Integer doInBackground(String... data) {
-            spinner.setVisibility(View.VISIBLE);
             obtainEventsFromCloud();
             return 0;
         }
@@ -344,4 +384,32 @@ public class MainActivity extends Activity
         }
     }
 
+    private class AfterLoginTask extends AsyncTask<String, Float, Bitmap> {
+        protected Bitmap doInBackground(String... data) {
+            String url = "https://graph.facebook.com/" + AccessToken.getCurrentAccessToken().getUserId() + "/picture?type=large";
+            return GetBitmapfromUrl(url);
+        }
+
+        public Bitmap GetBitmapfromUrl(String scr) {
+            try {
+                URL url=new URL(scr);
+                HttpURLConnection connection=(HttpURLConnection)url.openConnection();
+                connection.setDoInput(true);
+                connection.connect();
+                InputStream input=connection.getInputStream();
+                Bitmap bmp = BitmapFactory.decodeStream(input);
+                return bmp;
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        protected void onPostExecute(Bitmap bmp) {
+            ImageView profilePic = (ImageView) findViewById(R.id.profile_pic);
+            profilePic.setImageBitmap(bmp);
+            profilePic.setVisibility(View.VISIBLE);
+        }
+    }
 }

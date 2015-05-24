@@ -45,6 +45,13 @@
                 android:layout_below="@+id/e_date"
                 android:layout_toEndOf="@+id/e_date"
                 android:layout_alignParentLeft="true"/>
+            <Button
+                android:visibility="invisible"
+                android:id="@+id/button_voy"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/button_voy"
+                android:drawableLeft="@drawable/com_facebook_button_like_background"/>
         </LinearLayout>
     </ScrollView>
 </RelativeLayout>

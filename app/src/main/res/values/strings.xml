@@ -16,6 +16,8 @@
     <string name="title_activity_event">EventActivity</string>
     <string name="hello_world">Hello world!</string>
     <string name="text_facebook">Conecta con Facebook y podrás ver a que carreras van tus amigos!</string>
+    <string name="logged_as">Logged as</string>
+    <string name="button_voy">Voy!</string>
     <string name="facebook_app_id">901552699904245</string>
 
 </resources>
